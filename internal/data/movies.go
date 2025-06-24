@@ -1,8 +1,11 @@
 package data
 
 import (
-	"greenlight.goodlooking.com/internal/validator"
+	"database/sql"
 	"time"
+
+	"greenlight.goodlooking.com/internal/validator"
+	"github.com/lib/pq"
 )
 
 type Movie struct {
@@ -13,6 +16,10 @@ type Movie struct {
 	Runtime   Runtime   `json:"runtime"`
 	Genres    []string  `json:"genres"`
 	Version   int32     `json:"version"`
+}
+
+type MovieModel struct {
+	DB *sql.DB
 }
 
 func ValidateMovie(v *validator.Validator, movie *Movie) {
@@ -30,4 +37,37 @@ func ValidateMovie(v *validator.Validator, movie *Movie) {
 	v.Check(len(movie.Genres) >= 1, "genres", "must contain at least 1 genre")
 	v.Check(len(movie.Genres) <= 5, "genres", "must not contain more than 5 genres")
 	v.Check(validator.Unique(movie.Genres), "genres", "must not contain duplicate values")
+}
+
+func (m MovieModel) Insert(movie *Movie) error {
+    query := `
+        INSERT INTO movies (title, year, runtime, genres) 
+        VALUES ($1, $2, $3, $4)
+        RETURNING id, created_at, version`
+
+    // Create an args slice containing the values for the placeholder parameters.
+    // Declaring this slice immediately next to our SQL query helps to make it nice
+    // and clear *what values are being used where* in the query.
+    args := []any{movie.Title, movie.Year, movie.Runtime, pq.Array(movie.Genres)}
+
+    // Use the QueryRow() method to execute the SQL query on our connection pool,
+    // passing in the elements of the args slice as variadic arguments and scanning 
+    // the system-generated id, created_at and version values into the movie struct.
+    return m.DB.QueryRow(query, args...).Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
+}
+
+
+// Add a placeholder method for fetching a specific record from the movies table.
+func (m MovieModel) Get(id int64) (*Movie, error) {
+    return nil, nil
+}
+
+// Add a placeholder method for updating a specific record in the movies table.
+func (m MovieModel) Update(movie *Movie) error {
+    return nil
+}
+
+// Add a placeholder method for deleting a specific record from the movies table.
+func (m MovieModel) Delete(id int64) error {
+    return nil
 }
