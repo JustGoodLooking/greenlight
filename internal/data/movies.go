@@ -41,28 +41,27 @@ func ValidateMovie(v *validator.Validator, movie *Movie) {
 }
 
 func (m MovieModel) Insert(movie *Movie) error {
-    query := `
+	query := `
         INSERT INTO movies (title, year, runtime, genres) 
         VALUES ($1, $2, $3, $4)
         RETURNING id, created_at, version`
 
-    // Create an args slice containing the values for the placeholder parameters.
-    // Declaring this slice immediately next to our SQL query helps to make it nice
-    // and clear *what values are being used where* in the query.
-    args := []any{movie.Title, movie.Year, movie.Runtime, pq.Array(movie.Genres)}
+	// Create an args slice containing the values for the placeholder parameters.
+	// Declaring this slice immediately next to our SQL query helps to make it nice
+	// and clear *what values are being used where* in the query.
+	args := []any{movie.Title, movie.Year, movie.Runtime, pq.Array(movie.Genres)}
 
-    // Use the QueryRow() method to execute the SQL query on our connection pool,
-    // passing in the elements of the args slice as variadic arguments and scanning 
-    // the system-generated id, created_at and version values into the movie struct.
-    return m.DB.QueryRow(query, args...).Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
+	// Use the QueryRow() method to execute the SQL query on our connection pool,
+	// passing in the elements of the args slice as variadic arguments and scanning
+	// the system-generated id, created_at and version values into the movie struct.
+	return m.DB.QueryRow(query, args...).Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
 }
 
-
-// Add a placeholder method for fetching a specific record from the movies table.
+// Get Add a placeholder method for fetching a specific record from the movies table.
 func (m MovieModel) Get(id int64) (*Movie, error) {
-       if id < 1 {
-        return nil, ErrRecordNotFound
-    }
+	if id < 1 {
+		return nil, ErrRecordNotFound
+	}
 
 	query := `
 	SELECT id, created_at, title, year, runtime, genres, version
@@ -72,69 +71,80 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 	var movie Movie
 
 	err := m.DB.QueryRow(query, id).Scan(
-        &movie.ID,
-        &movie.CreatedAt,
-        &movie.Title,
-        &movie.Year,
-        &movie.Runtime,
-        pq.Array(&movie.Genres),
-        &movie.Version,
-    )
+		&movie.ID,
+		&movie.CreatedAt,
+		&movie.Title,
+		&movie.Year,
+		&movie.Runtime,
+		pq.Array(&movie.Genres),
+		&movie.Version,
+	)
 
 	if err != nil {
-        switch {
-        case errors.Is(err, sql.ErrNoRows):
-            return nil, ErrRecordNotFound
-        default:
-            return nil, err
-        }
-    }
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
 
 	return &movie, nil
 }
 
-// Add a placeholder method for updating a specific record in the movies table.
+// Update Add a placeholder method for updating a specific record in the movies table.
 func (m MovieModel) Update(movie *Movie) error {
 	query := `
 	UPDATE movies 
 	SET title = $1, year = $2, runtime = $3, genres = $4, version = version + 1
-	WHERE id = $5
+	WHERE id = $5 AND version = $6
 	RETURNING version`
 
 	args := []any{
-        movie.Title,
-        movie.Year,
-        movie.Runtime,
-        pq.Array(movie.Genres),
-        movie.ID,
-    }
-    
-	return m.DB.QueryRow(query, args...).Scan(&movie.Version)
+		movie.Title,
+		movie.Year,
+		movie.Runtime,
+		pq.Array(movie.Genres),
+		movie.ID,
+		movie.Version,
+	}
+
+	err := m.DB.QueryRow(query, args...).Scan(&movie.Version)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return ErrEditConflict
+		default:
+			return err
+		}
+	}
+
+	return nil
 }
 
-// Add a placeholder method for deleting a specific record from the movies table.
+// Delete Add a placeholder method for deleting a specific record from the movies table.
 func (m MovieModel) Delete(id int64) error {
 	if id < 1 {
-        return ErrRecordNotFound
-    }
+		return ErrRecordNotFound
+	}
 
 	query := `
 	DELETE FROM movies
 	WHERE id = $1`
 
 	result, err := m.DB.Exec(query, id)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
-    rowsAffected, err := result.RowsAffected()
-    if err != nil {
-        return err
-    }
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
 
-    if rowsAffected == 0 {
-        return ErrRecordNotFound
-    }
+	if rowsAffected == 0 {
+		return ErrRecordNotFound
+	}
 
-    return nil
+	return nil
 }
