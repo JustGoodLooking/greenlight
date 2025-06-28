@@ -61,8 +61,9 @@ func (app *application) rateLimit(next http.Handler) http.Handler {
 	}()
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ip := realip.RealIP(r)
+		ip := realip.FromRequest(r)
 
+		mu.Lock()
 		if _, found := clients[ip]; !found {
 			clients[ip] = &client{limiter: rate.NewLimiter(rate.Limit(app.config.limiter.rps), app.config.limiter.burst)}
 		}
