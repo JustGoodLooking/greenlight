@@ -106,35 +106,47 @@ func (ap *application) readString(qs url.Values, key string, defaultValue string
 	s := qs.Get(key)
 
 	if s == "" {
-        return defaultValue
-    }
+		return defaultValue
+	}
 
 	return s
 }
 
 func (app *application) readCSV(qs url.Values, key string, defaultValue []string) []string {
-    csv := qs.Get(key)
+	csv := qs.Get(key)
 
-    if csv == "" {
-        return defaultValue
-    }
+	if csv == "" {
+		return defaultValue
+	}
 
-    return strings.Split(csv, ",")
+	return strings.Split(csv, ",")
 }
 
 func (app *application) readInt(qs url.Values, key string, defaultValue int, v *validator.Validator) int {
-    s := qs.Get(key)
+	s := qs.Get(key)
 
-    // If no key exists (or the value is empty) then return the default value.
-    if s == "" {
-        return defaultValue
-    }
+	// If no key exists (or the value is empty) then return the default value.
+	if s == "" {
+		return defaultValue
+	}
 
-    i, err := strconv.Atoi(s)
-    if err != nil {
-        v.AddError(key, "must be an integer value")
-        return defaultValue
-    }
+	i, err := strconv.Atoi(s)
+	if err != nil {
+		v.AddError(key, "must be an integer value")
+		return defaultValue
+	}
 
-    return i
+	return i
+}
+
+func (app *application) background(fn func()) {
+	go func() {
+		defer func() {
+			pv := recover()
+			if pv != nil {
+				app.logger.Error(fmt.Sprintf("%v", pv))
+			}
+		}()
+		fn()
+	}()
 }
