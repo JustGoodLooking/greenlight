@@ -15,6 +15,11 @@ func (app *application) createAuthenticationTokenHandler(w http.ResponseWriter, 
 	}
 
 	err := app.readJSON(w, r, &input)
+	
+	if err != nil {
+        app.badRequestResponse(w, r, err)
+        return
+    }
 
 	v := validator.New()
 
