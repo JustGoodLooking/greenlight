@@ -28,5 +28,14 @@ func (app *application) routes() http.Handler {
 
 	router.Handler(http.MethodGet, "/debug/vars", expvar.Handler())
 
+
+	router.HandlerFunc(http.MethodPost, "/v1/keypairs", app.createKeypairHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/keypairs/:id", app.activateUserHandler)
+	router.HandlerFunc(http.MethodPost, "/v1/sign", app.signHandler)
+
+	router.Handler(http.MethodGet, "/debug/vars", expvar.Handler())
+
+
+
 	return app.metrics(app.recoverPanic(app.rateLimit(app.authenticate(router))))
 }
