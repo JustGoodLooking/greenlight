@@ -49,6 +49,7 @@ type application struct {
 	models data.Models
 	mailer *mailer.Mailer
 	wg     sync.WaitGroup
+	keyStore *data.KeyStore
 }
 
 func main() {
@@ -109,6 +110,7 @@ func main() {
 		logger: logger,
 		models: data.NewModels(db),
 		mailer: mailer,
+		keyStore: data.NewKeyStore(),
 	}
 
 	err = app.serve()

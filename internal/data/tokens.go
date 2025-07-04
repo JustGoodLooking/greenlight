@@ -27,13 +27,14 @@ type TokenModel struct {
 	DB *sql.DB
 }
 
-func generateToken(userId int64, ttl time.Duration, scope string) *Token {
+func generateToken(userID int64, ttl time.Duration, scope string) *Token {
 	token := &Token{
 		Plaintext: rand.Text(),
-		UserID:    userId,
+		UserID:    userID,
 		Expiry:    time.Now().Add(ttl),
 		Scope:     scope,
 	}
+
 
 	hash := sha256.Sum256([]byte(token.Plaintext))
 	token.Hash = hash[:]

@@ -6,7 +6,20 @@ import (
 )
 
 func (app *application) createKeypairHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("create keypairs success")
+	keypair, pri, err := app.models.Keypair.New(123, "123", "123")
+
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	app.keyStore.Set(keypair.ID, pri)
+
+
+	err = app.writeJSON(w, http.StatusOK, envelope{"movie": keypair}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
 }
 
 
