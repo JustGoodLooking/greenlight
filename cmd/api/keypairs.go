@@ -85,23 +85,23 @@ func (app *application) signHandler(w http.ResponseWriter, r *http.Request) {
 		v := validator.New()
 		if request.ValidatePhotoInput(v, input); !v.Valid() {
 
-			failedPhotoResp := response.FailedPhotoResponse{
+			failedPhoto := response.FailedPhotoResponse{
 				Filename: fileHeader.Filename,
 				Errors: v.Errors,
 			}
 			// append 進去response fail
-			failedPhotosResp = append(failedPhotosResp, failedPhotoResp)
+			failedPhotosResp = append(failedPhotosResp, failedPhoto)
 			continue
 
 		}
 		input.File.Seek(0, io.SeekStart)
-		uploadedPhotoResponse := response.UploadedPhotoResponse{
+		processedPhotos := response.UploadedPhotoResponse{
 			PhotoID: 123,
 			Filename: fileHeader.Filename,
 			Status: "processing",
 		}
 
-		uploadedPhotosResp = append(uploadedPhotosResp, uploadedPhotoResponse)
+		uploadedPhotosResp = append(uploadedPhotosResp, processedPhotos)
 
 		// 沒問題insert db
 		// append 進去uploaded的地方
