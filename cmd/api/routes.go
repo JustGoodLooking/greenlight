@@ -33,7 +33,7 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodGet, "/v1/keypairs/:id", app.activateUserHandler)
 	router.HandlerFunc(http.MethodPost, "/v1/sign", app.signHandler)
 
-	router.Handler(http.MethodGet, "/debug/vars", expvar.Handler())
+	
 
 
 

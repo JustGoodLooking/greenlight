@@ -83,3 +83,23 @@ func (app *application) notPermittedResponse(w http.ResponseWriter, r *http.Requ
     message := "your user account doesn't have the necessary permissions to access this resource"
     app.errorResponse(w, r, http.StatusForbidden, message)
 }
+
+func (app *application) unsupportedMediaTypeResponse(w http.ResponseWriter, r *http.Request) {
+    message := "Content-Type must be multipart/form-data"
+    app.errorResponse(w, r, http.StatusBadRequest, message)
+}
+
+func (app *application) requestEntityTooLargeResponse(w http.ResponseWriter, r *http.Request) {
+    message := "Upload too large, please ensure files are within allowed size limits (60MB) "
+    app.errorResponse(w, r, http.StatusBadRequest, message)
+}
+
+func (app *application) noFileUploaded(w http.ResponseWriter, r *http.Request) {
+    message := "No files uploaded"
+    app.errorResponse(w, r, http.StatusBadRequest, message)
+}
+
+func (app *application) tooManyFileUploaded(w http.ResponseWriter, r *http.Request) {
+    message := "You can upload up to 5 photos at a time"
+    app.errorResponse(w, r, http.StatusBadRequest, message)
+}

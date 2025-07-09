@@ -15,6 +15,12 @@ import (
 	"greenlight.goodlooking.com/internal/validator"
 )
 
+const (
+    MaxUploadSize = 75 << 20 // 200MB, total upload per request
+    MaxFileSize   = 15 << 20  // 20MB, per file limit
+)
+
+
 func (app *application) recoverPanic(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
@@ -219,4 +225,24 @@ func (app *application) metrics(next http.Handler) http.Handler {
         duration := time.Since(start).Microseconds()
         totalProcessingTimeMicroseconds.Add(duration)
     })
+}
+
+
+func (app *application) validateUpload(next http.Handler) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// validate content-type header
+		contentType := r.Header.Get("Content-Type")
+		if !strings.HasPrefix(contentType, "multipart/form-data") {
+			app.unsupportedMediaTypeResponse(w, r)
+			return
+		}
+
+		// setup max total size
+		r.Body = http.MaxBytesReader(w, r.Body, MaxUploadSize)
+
+
+        // Call the next handler in the chain.
+        next.ServeHTTP(w, r)
+
+	})
 }

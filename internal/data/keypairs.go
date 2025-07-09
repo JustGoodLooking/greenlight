@@ -21,13 +21,13 @@ type KeypairModel struct {
 }
 
 
-func (m KeypairModel) New(userID int64, alias, keyType string) (*Keypair, any, error) {
-	keypair, pri := generateKeypair(userID, alias, keyType)
+// func (m KeypairModel) New(userID int64, alias, keyType string) (*Keypair, any, error) {
+// 	keypair, pri := generateKeypair(userID, alias, keyType)
 
-	return keypair, pri, nil
-}
+// 	return keypair, pri, nil
+// }
 
 
-func generateKeypair(userID int64, alias, keyType string) (*Keypair, any) {
+// func generateKeypair(userID int64, alias, keyType string) (*Keypair, any) {
 	
-}
+// }
