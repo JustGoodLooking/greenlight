@@ -1,11 +1,24 @@
-# 第一階段：編譯 Go 程式
+# ===== 第一階段：build Go binary =====
 FROM golang:1.22 as builder
+
 WORKDIR /app
 COPY . .
-RUN go build -o server ./cmd/api
 
-# 第二階段：建立最小化的執行環境（無 Go 環境）
+# 接收外部參數（來自 docker build --build-arg）
+ARG VERSION
+ARG COMMIT
+ARG BUILD_TIME
+
+RUN go build -ldflags "\
+    -X 'main.version=${VERSION}' \
+    -X 'main.commit=${COMMIT}' \
+    -X 'main.buildTime=${BUILD_TIME}'" \
+    -o server ./cmd/api
+
+# ===== 第二階段：生成最小化映像 =====
 FROM debian:bookworm-slim
+
 WORKDIR /app
 COPY --from=builder /app/server .
+
 CMD ["./server"]

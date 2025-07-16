@@ -1,4 +1,8 @@
-include .envrc
+# 讀取環境（預設為 dev）
+ENV ?= dev
+include .env.$(ENV)
+export
+
 
 # ==================================================================================== #
 # HELPERS
@@ -14,6 +18,18 @@ help:
 confirm:
 	@echo -n 'Are you sure? [y/N] ' && read ans && [ $${ans:-N} = y ]
 
+.PHONY: confirm-deploy
+confirm-deploy:
+	@echo "⚠️  DEPLOYING with settings:"
+	@echo "  - ENV        = $(ENV)"
+	@echo "  - HOST       = $(HOST)"
+	@echo "  - REMOTE_DIR = $(REMOTE_DIR)"
+	@echo "  - VERSION    = $(VERSION)"
+	@echo "  - DB_DSN     = $(GREENLIGHT_DB_DSN)"
+	@echo -n "Are you sure you want to deploy? [y/N] " && read ans && [ $${ans:-N} = y ]
+
+
+
 # ==================================================================================== #
 # DEVELOPMENT
 # ==================================================================================== #
@@ -21,12 +37,12 @@ confirm:
 ## run/api: run the cmd/api application
 .PHONY: run/api
 run/api:
-	go run ./cmd/api -db-dsn=${GREENLIGHT_DB_DSN} 
+	docker-compose -f docker-compose.dev.yml up
 
 ## db/psql: connect to the database using psql
 .PHONY: db/psql
 db/psql:
-	psql ${GREENLIGHT_DB_DSN}
+	psql ${KEEPLESS_DB_DSN}
 
 ## db/migrations/new name=$1: create a new database migration
 .PHONY: db/migrations/new
@@ -38,7 +54,7 @@ db/migrations/new:
 .PHONY: db/migrations/up
 db/migrations/up: confirm
 	@echo 'Running up migrations...'
-	migrate -path ./migrations -database ${GREENLIGHT_DB_DSN} up
+	migrate -path ./migrations -database ${KEEPLESS_DB_DSN} up
 
 # ==================================================================================== #
 # QUALITY CONTROL
@@ -67,6 +83,8 @@ audit:
 	@echo 'Running tests...'
 	go test -race -vet=off ./...
 
+
+
 # ==================================================================================== #
 # BUILD
 # ==================================================================================== #
@@ -78,28 +96,51 @@ build/api:
 	go build -ldflags="-s" -o=./bin/api ./cmd/api
 	GOOS=linux GOARCH=amd64 go build -ldflags="-s" -o=./bin/linux_amd64/api ./cmd/api
 
+
+## docker/build: build Docker image for api
+
+VERSION := $(shell git describe --tags --always)
+COMMIT := $(shell git rev-parse --short HEAD)
+BUILD_TIME := $(shell date -u +"%Y-%m-%d%H:%M:%SZ")
+
+DOCKER_IMAGE_NAME := keepless-api
+
+.PHONY: docker/build
+docker/build:
+	@echo "Building Docker image $(DOCKER_IMAGE_NAME):$(VERSION)"
+	docker build \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg COMMIT=$(COMMIT) \
+		--build-arg BUILD_TIME=$(BUILD_TIME)\
+		-t $(DOCKER_IMAGE_NAME):$(VERSION)
+
+
+
 # ==================================================================================== #
 # PRODUCTION
 # ==================================================================================== #
 
- 
-## production/connect: connect to the production server
-.PHONY: production/connect
-production/connect:
-	ssh greenlight@${production_host_ip}
 
-## production/deploy/api: deploy the api to production
-.PHONY: production/deploy/api
-production/deploy/api:
-	rsync -P ./bin/linux_amd64/api greenlight@${production_host_ip}:~
-	rsync -rP --delete ./migrations greenlight@${production_host_ip}:~
-	rsync -P ./remote/production/api.service greenlight@${production_host_ip}:~
-	rsync -P ./remote/production/Caddyfile greenlight@${production_host_ip}:~
-	ssh -t greenlight@${production_host_ip} '\
-		migrate -path ~/migrations -database $$GREENLIGHT_DB_DSN up \
-		&& sudo mv ~/api.service /etc/systemd/system/ \
-		&& sudo systemctl enable api \
-		&& sudo systemctl restart api \
-		&& sudo mv ~/Caddyfile /etc/caddy/ \
-		&& sudo systemctl reload caddy \
-	'
+deploy:confirm-deploy docker-build upload migrate restart
+
+upload:
+	docker save $(DOCKER_IMAGE_NAME):$(VERSION) | bzip2 | ssh $(HOST) 'bunzip2 | docker load'
+	rsync -avP .env.api.$(ENV) $(HOST):$(REMOTE_DIR)/.env.api.$(ENV)
+	rsync -avP ./migrations/ $(HOST):$(REMOTE_DIR)/migrations/
+
+migrate:
+	ssh $(HOST) "\
+		docker run --rm \
+			-v $(REMOTE_DIR)/migrations:/migrations \
+			migrate/migrate \
+			-path=/migrations \
+			-database '$(GREENLIGHT_DB_DSN)' \
+			up \
+	"
+
+restart:
+	ssh $(HOST) "\
+		cd $(REMOTE_DIR) && \
+		docker compose -f docker-compose.yml -f $(COMPOSE_FILE) down && \
+		docker compose -f docker-compose.yml -f $(COMPOSE_FILE) up -d \
+	"
