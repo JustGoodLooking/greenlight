@@ -31,3 +31,23 @@ db/migrations/new:
 db/migrations/up: confirm
 	@echo 'Running up migrations...'
 	migrate -path ./migrations -database ${GREENLIGHT_DB_DSN} up
+
+
+# 1. build image (in local)
+# 2. upload image (docker save → scp → docker load), env, migration, 
+# 3. ssh to remote
+# 4. execute below command
+# ssh $(HOST) "\
+# 		docker run --rm \
+# 			-v /app/migrations:/migrations \
+# 			--network keepless_backend \
+# 			migrate/migrate \
+# 			-path=/migrations \
+# 			-database '$$GREENLIGHT_DB_DSN' \
+# 			up \
+# 	"
+# 7. restart the docker service
+# ssh $(HOST) "\
+# 		cd /app && \
+# 		docker compose -f docker-compose.yml -f $(compose_file) down && \
+# 		docker compose -f docker-compose.yml -f $(compose_file) up -d \

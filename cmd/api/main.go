@@ -52,6 +52,13 @@ type application struct {
 	keyStore *data.KeyStore
 }
 
+func getEnv(key, fallback string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return fallback
+}
+
 func main() {
 	var cfg config
 

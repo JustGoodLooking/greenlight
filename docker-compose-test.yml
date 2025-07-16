@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres
+    container_name: my-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: reflection
+    ports:
+      - "5432:5432"
+    networks:
+      - my-network
+
+
+  spring-app:
+    build: .
+    container_name: my-spring-app
+    depends_on:
+      - postgres
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/reflection
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_SERVER_PORT: 8080
+    
+
+    ports:
+      - "8080:8080"
+    networks:
+      - my-network
+    volumes:
+      - ./config/application.properties:/app/config/application.properties
+
+
+
+networks:
+  my-network:
