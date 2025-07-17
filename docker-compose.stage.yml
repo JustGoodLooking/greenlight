@@ -4,10 +4,9 @@ services:
   api:
     env_file:
       - .env.stage
-    image: keepless-api:latest
-    container_name: keepless-${ENV}
+    image: greenlight-api:latest
+    container_name: greenlight-${ENV}
     restart: unless-stopped
-    depends_on:
-      - postgres
+
     ports:
       - "8001:8080"
