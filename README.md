@@ -1,132 +1,73 @@
-```mermaid
+# Greenlight
 
----
-config:
-  look: classic
-  theme: Default
----
-sequenceDiagram
-    participant User
-    participant Frontend
-    participant APIServer
-    participant Channel as Queue
-    participant Worker
-    participant R2
-    participant PostgreSQL
-    User->>Frontend: 上傳照片
-    Frontend->>APIServer: POST /photos
-    APIServer-->>APIServer: 檢查圖片
-    APIServer-->>APIServer: 建立task
-    APIServer-->>APIServer: 儲存基本資料
-    APIServer-->>Channel: 將task 放入channel (非同步)
-    APIServer->>Frontend: 回傳已接收
-    Frontend->>User: 顯示上傳完成
-    par 背景非同步處理
-    Channel-->>Worker: Dequeue 拿取任務
-    Worker->>Worker: 取得Exif
-    Worker->>Worker: 壓縮圖片
-    Worker->>R2: 上傳原始檔案及壓縮後檔案
-    Worker->>PostgreSQL: 更新圖片資料
+Greenlight is a minimal web RESTful application built to practice backend development, system architecture, and deployment workflow. While the business logic is simple, the project focuses on clean code structure, Docker-based environment management, and production-ready deployment practices.
+
+## Stack and Tools
+
+- **Language**: Go (Golang)
+- **Routing**: [`httprouter`](https://github.com/julienschmidt/httprouter)
+- **Database**: PostgreSQL
+- **Cache**: Redis
+- **Containerization**: Docker, Docker Compose
+- **Environment Configuration**: `.env`, `envconfig`
+- **Deployment**: EC2 (Ubuntu), managed via systemd and Makefile
+- **Build Tools**: Makefile, Bash scripts
+- **Observability**: Structured logging, trace ID injection
+
+## Features
+
+- Modular project structure (`cmd`, `internal`, `migrations`)
+- Graceful shutdown, timeouts, and context propagation
+- Channel-based background workers
+- Docker-based local development with isolated DB
+- Production-ready configuration with `.env` and secrets management
+- Zero-downtime deploys via `make reload`
+
+## Architecture Overview
+
+This is the production and staging architecture used to deploy Greenlight. The infrastructure includes a reverse proxy, separated environments, and cloud services for storage, email, and monitoring.
+
+```mermaid
+flowchart LR
+    subgraph PublicInternet
+        User
     end
-```
 
+    subgraph EntryPoint["Edge Layer"]
+        Cloudflare["Cloudflare (TLS, DNS, CDN)"]
+    end
 
-```mermaid
-flowchart TD
-    A[User opens Keepless] --> B{Uploaded 5 photos today?}
-    B -- No --> C[Take/Upload a photo]
-    C --> D[Photo processed & stored]
-    D --> E[View daily recap]
-    B -- Yes --> E
-    E --> F[View album or edit captions]
-    F --> G[Close app]
-```
+    subgraph AWS
+        subgraph EC2 Instance
+            Caddy[[Reverse Proxy]]
+            stage["Stage Server (port 4000)"]
+            production["Production Server (port 4001) "]
+        end
+        subgraph Monitoring["Monitoring"]
+            cloudwatch[CloudWatch]
+        end
 
-```mermaid
-classDiagram
-    class User {
-        +int ID
-        +string Email
-        +string DisplayName
-        +time CreatedAt
-    }
+        subgraph Email["Email Service"]
+            ses[AWS SES]
+        end
+    end
 
-    class Photo {
-        +int ID
-        +int UserID
-        +string Filename
-        +string StoragePath
-        +time TakenAt
-        +time UploadedAt
-    }
+    subgraph DB
+        db[(RDS PostgreSQL)]
+    end
 
-    class Album {
-        +int ID
-        +int UserID
-        +string Name
-        +time CreatedAt
-    }
+    subgraph R2
+        r2[(Cloudflare R2)]
+    end
 
-    User "1" --> "0..*" Photo : owns
-    User "1" --> "0..*" Album : owns
-    Album "1" --> "0..*" Photo : contains
-
-```
-
-```mermaid
-erDiagram
-    USERS {
-        int id PK
-        string email
-        string password_hash
-        string display_name
-        timestamp created_at
-    }
-    PHOTOS {
-        int id PK
-        int user_id FK
-        string filename
-        string storage_path
-        timestamp taken_at
-        timestamp uploaded_at
-    }
-    ALBUMS {
-        int id PK
-        int user_id FK
-        string name
-        timestamp created_at
-    }
-    ALBUMS_PHOTOS {
-        int album_id FK
-        int photo_id FK
-    }
-
-    USERS ||--o{ PHOTOS : uploads
-    USERS ||--o{ ALBUMS : owns
-    ALBUMS ||--o{ ALBUMS_PHOTOS : contains
-    PHOTOS ||--o{ ALBUMS_PHOTOS : tagged_in
-
-```
-
-```mermaid
-architecture-beta
-
-group edge(cloud)[Edge Layer]
-    service cloudproxy(dns)[Cloudflare Proxy] in edge
-
-group frontend(cloud)[Frontend]
-    service app(internet)[App] in frontend
-    service web(internet)[Web] in frontend
-
-group backend(cloud)[Backend]
-    service ec2(server)[EC2] in backend
-    service rds(database)[RDS] in backend
-    service r2(disk)[Cloudflare R2] in backend
-
-app:B -- T:cloudproxy
-web:B -- T:cloudproxy
-cloudproxy:B -- T:ec2
-ec2:R -- L:rds
-ec2:B -- T:r2
-
-```
+    PublicInternet -- "TCP 443 (HTTPS)" --> Cloudflare
+    Cloudflare -- "stage.domain" --> Caddy
+    Cloudflare --"production.domain" --> Caddy
+    Caddy -- "stage.domain → :4000" --> stage
+    Caddy -- "prod.domain → :4001" --> production
+    stage -- "5432 (Stage DB Conn)" --> db
+    production -- "5432 (Prod DB Conn)" --> db
+    stage -."R2 API".-> r2
+    production -."R2 API".-> r2
+    stage -.-> ses
+    production -.-> ses
