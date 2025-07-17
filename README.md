@@ -12,7 +12,6 @@ Greenlight is a minimal web RESTful application built to practice backend develo
 - **Environment Configuration**: `.env`, `envconfig`
 - **Deployment**: EC2 (Ubuntu), managed via systemd and Makefile
 - **Build Tools**: Makefile, Bash scripts
-- **Observability**: Structured logging, trace ID injection
 
 ## Features
 
@@ -21,7 +20,6 @@ Greenlight is a minimal web RESTful application built to practice backend develo
 - Channel-based background workers
 - Docker-based local development with isolated DB
 - Production-ready configuration with `.env` and secrets management
-- Zero-downtime deploys via `make reload`
 
 ## Architecture Overview
 
