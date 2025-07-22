@@ -11,4 +11,7 @@ require (
 	golang.org/x/time v0.12.0
 )
 
-require golang.org/x/text v0.26.0 // indirect
+require (
+	github.com/robfig/cron/v3 v3.0.1 // indirect
+	golang.org/x/text v0.26.0 // indirect
+)

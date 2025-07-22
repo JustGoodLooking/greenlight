@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"greenlight.goodlooking.com/internal/cron"
 	"greenlight.goodlooking.com/internal/mailer"
 
 	_ "github.com/lib/pq"
@@ -50,6 +51,7 @@ type application struct {
 	mailer *mailer.Mailer
 	wg     sync.WaitGroup
 	keyStore *data.KeyStore
+	cronjobs *cron.CronJobs
 }
 
 func getEnv(key, fallback string) string {
@@ -112,13 +114,17 @@ func main() {
         return time.Now().Unix()
     }))
 
+	models := data.NewModels(db)
 	app := &application{
 		config: cfg,
 		logger: logger,
-		models: data.NewModels(db),
+		models: models,
 		mailer: mailer,
 		keyStore: data.NewKeyStore(),
+		cronjobs: cron.NewCronJobs(models, logger),
 	}
+
+	app.cronjobs.StartAll()
 
 	err = app.serve()
 	if err != nil {
