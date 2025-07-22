@@ -1,29 +1,26 @@
 package cron
 
 import (
-	
 	"log/slog"
 
 	"github.com/robfig/cron/v3"
 	"greenlight.goodlooking.com/internal/data"
 )
 
-
 type CronJobs struct {
 	PhotoLocation PhotoLocationCronJobs
-	logger *slog.Logger
+	logger        *slog.Logger
 }
-
 
 func NewCronJobs(models data.Models, logger *slog.Logger) *CronJobs {
 	if logger != nil {
 		logger.Info("It is ok")
 	}
 	return &CronJobs{
-		PhotoLocation: PhotoLocationCronJobs{models: models, logger: logger},
+		PhotoLocation: PhotoLocationCronJobs{},
+		logger:        logger,
 	}
 }
-
 
 func (cj *CronJobs) StartAll() {
 
@@ -33,5 +30,3 @@ func (cj *CronJobs) StartAll() {
 	c.Start()
 	cj.logger.Info("all cron jobs started")
 }
-
-
